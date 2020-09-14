@@ -3,12 +3,43 @@
  *
  * See: https://www.gatsbyjs.org/docs/node-apis/
  */
-// You can delete this file if you're not using it
 
-/**
- * You can uncomment the following line to verify that
- * your plugin is being loaded in your site.
- *
- * See: https://www.gatsbyjs.org/docs/creating-a-local-plugin/#developing-a-local-plugin-that-is-outside-your-project
- */
-exports.onPreInit = () => console.log("Loaded gatsby-starter-plugin")
+const fetch = require("node-fetch");
+
+// constants for your GraphQL Contributor type
+const CONTRIBUTOR_NODE_TYPE = `Contributor`;
+
+exports.sourceNodes = async (
+  { actions, createContentDigest, createNodeId },
+  pluginOptions
+) => {
+  const { createNode } = actions;
+
+  let contributors = [];
+  const repoName = pluginOptions.repo;
+  const githubRepoURL = `https://api.github.com/repos/${repoName}/contributors`;
+
+  try {
+    const response = await fetch(githubRepoURL);
+    const responseJSON = await response.json();
+    contributors = responseJSON;
+    // loop through "contributors" and create Gatsby nodes
+    contributors.forEach((contributor) =>
+      createNode({
+        ...contributor,
+        id: createNodeId(`${CONTRIBUTOR_NODE_TYPE}-${contributor.id}`),
+        parent: null,
+        children: [],
+        internal: {
+          type: CONTRIBUTOR_NODE_TYPE,
+          content: JSON.stringify(contributor),
+          contentDigest: createContentDigest(contributor)
+        }
+      })
+    );
+  } catch (error) {
+    console.error(error);
+  }
+
+  return;
+};
